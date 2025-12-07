@@ -1,0 +1,1119 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>音乐播放器</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+            font-family: 'Microsoft YaHei', sans-serif;
+        }
+
+        body {
+            background-color: #f5f5f5;
+            color: #333;
+            line-height: 1.6;
+        }
+
+        .container {
+            max-width: 1200px;
+            margin: 0 auto;
+            padding: 20px;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+            padding: 20px;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+        }
+
+        h1 {
+            font-size: 2.5rem;
+            margin-bottom: 10px;
+        }
+
+        .player {
+            background: white;
+            border-radius: 10px;
+            padding: 20px;
+            margin-bottom: 30px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+        }
+
+        .audio-controls {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            margin-bottom: 20px;
+            gap: 20px;
+        }
+
+        .control-btn {
+            background: #667eea;
+            color: white;
+            border: none;
+            width: 50px;
+            height: 50px;
+            border-radius: 50%;
+            font-size: 1.2rem;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .control-btn:hover {
+            background: #764ba2;
+            transform: scale(1.05);
+        }
+
+        .play-btn {
+            width: 70px;
+            height: 70px;
+            font-size: 1.5rem;
+        }
+
+        .progress-container {
+            width: 100%;
+            height: 8px;
+            background: #e0e0e0;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            cursor: pointer;
+        }
+
+        .progress-bar {
+            height: 100%;
+            background: #667eea;
+            border-radius: 4px;
+            width: 0%;
+            transition: width 0.1s linear;
+        }
+
+        .time-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.9rem;
+            color: #666;
+        }
+
+        .volume-control {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            margin-top: 15px;
+        }
+
+        .volume-slider {
+            width: 100px;
+            cursor: pointer;
+        }
+
+        .song-list {
+            background: white;
+            border-radius: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.05);
+            overflow: hidden;
+        }
+
+        .list-header {
+            display: grid;
+            grid-template-columns: 50px 1fr 100px;
+            padding: 15px;
+            background: #f8f9fa;
+            font-weight: bold;
+            border-bottom: 1px solid #eee;
+        }
+
+        .song-item {
+            display: grid;
+            grid-template-columns: 50px 1fr 100px;
+            padding: 12px 15px;
+            border-bottom: 1px solid #f0f0f0;
+            cursor: pointer;
+            transition: background-color 0.2s ease;
+        }
+
+        .song-item:hover {
+            background-color: #f8f9fa;
+        }
+
+        .song-item.active {
+            background-color: #e8f0fe;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        .song-number {
+            text-align: center;
+        }
+
+        .song-name {
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            padding: 0 10px;
+        }
+
+        .song-size {
+            text-align: right;
+            color: #888;
+        }
+
+        .now-playing {
+            text-align: center;
+            margin-bottom: 15px;
+            font-size: 1.1rem;
+            color: #667eea;
+            font-weight: 500;
+        }
+
+        @media (max-width: 768px) {
+            .list-header, .song-item {
+                grid-template-columns: 40px 1fr 80px;
+            }
+            
+            h1 {
+                font-size: 2rem;
+            }
+            
+            .audio-controls {
+                gap: 10px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>音乐播放器</h1>
+            <p>共 {{mp3Files.length}} 首歌曲</p>
+        </header>
+
+        <div class="player">
+            <div class="now-playing" id="nowPlaying">请选择一首歌曲开始播放</div>
+            
+            <div class="audio-controls">
+                <button class="control-btn" id="prevBtn">◀◀</button>
+                <button class="control-btn play-btn" id="playBtn">▶</button>
+                <button class="control-btn" id="nextBtn">▶▶</button>
+            </div>
+            
+            <div class="progress-container" id="progressContainer">
+                <div class="progress-bar" id="progressBar"></div>
+            </div>
+            
+            <div class="time-info">
+                <span id="currentTime">00:00</span>
+                <span id="duration">00:00</span>
+            </div>
+            
+            <div class="volume-control">
+                <span>🔊</span>
+                <input type="range" min="0" max="1" step="0.01" value="1" class="volume-slider" id="volumeSlider">
+            </div>
+            
+            <!-- 音频元素 -->
+            <audio id="audioPlayer" preload="metadata"></audio>
+        </div>
+
+        <div class="song-list">
+            <div class="list-header">
+                <div class="song-number">序号</div>
+                <div class="song-name">歌曲名称</div>
+                <div class="song-size">文件大小</div>
+            </div>
+            <div id="songListContainer">
+                <!-- 歌曲列表会通过JS动态生成 -->
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // MP3文件列表
+        const mp3Files = [ 
+            { 
+                name: "001.罗刹海市-刀郎(十五倍音质)", 
+                file: "001.罗刹海市-刀郎(十五倍音质).mp3", 
+                size: 8219263 
+            } 
+        , 
+            { 
+                name: "002.天真的橡皮-王小帅(十五倍音质)", 
+                file: "002.天真的橡皮-王小帅(十五倍音质).mp3", 
+                size: 6158718 
+            } 
+        , 
+            { 
+                name: "003.赐伤-洋澜一(十五倍音质)", 
+                file: "003.赐伤-洋澜一(十五倍音质).mp3", 
+                size: 5098030 
+            } 
+        , 
+            { 
+                name: "004.命运的思量(新版)-GS大头(十五倍音质)", 
+                file: "004.命运的思量(新版)-GS大头(十五倍音质).mp3", 
+                size: 7167921 
+            } 
+        , 
+            { 
+                name: "005.来了人间就不想走-魏佳艺(十五倍音质)", 
+                file: "005.来了人间就不想走-魏佳艺(十五倍音质).mp3", 
+                size: 5624695 
+            } 
+        , 
+            { 
+                name: "006.这一杯入喉-大壮(十五倍音质)", 
+                file: "006.这一杯入喉-大壮(十五倍音质).mp3", 
+                size: 5831894 
+            } 
+        , 
+            { 
+                name: "007.真的爱着你(明慧版)-明慧(十五倍音质)", 
+                file: "007.真的爱着你(明慧版)-明慧(十五倍音质).mp3", 
+                size: 6324264 
+            } 
+        , 
+            { 
+                name: "008.西楼儿女-海来阿木(十五倍音质)", 
+                file: "008.西楼儿女-海来阿木(十五倍音质).mp3", 
+                size: 6196869 
+            } 
+        , 
+            { 
+                name: "009.我是人间限量版-周小双(十五倍音质)", 
+                file: "009.我是人间限量版-周小双(十五倍音质).mp3", 
+                size: 4433323 
+            } 
+        , 
+            { 
+                name: "010.颠倒歌-刀郎(十五倍音质)", 
+                file: "010.颠倒歌-刀郎(十五倍音质).mp3", 
+                size: 5510813 
+            } 
+        , 
+            { 
+                name: "011.做个俗人-丁乙中(十五倍音质)", 
+                file: "011.做个俗人-丁乙中(十五倍音质).mp3", 
+                size: 4304050 
+            } 
+        , 
+            { 
+                name: "012.笼-张碧晨(十五倍音质)", 
+                file: "012.笼-张碧晨(十五倍音质).mp3", 
+                size: 6157293 
+            } 
+        , 
+            { 
+                name: "013.来人间走个过场 -魏佳艺(十五倍音质)", 
+                file: "013.来人间走个过场 -魏佳艺(十五倍音质).mp3", 
+                size: 5540870 
+            } 
+        , 
+            { 
+                name: "014.年少的你啊-浩然H.R(十五倍音质)", 
+                file: "014.年少的你啊-浩然H.R(十五倍音质).mp3", 
+                size: 4323200 
+            } 
+        , 
+            { 
+                name: "015.人生匆匆像一阵风-安儿陈(十五倍音质)", 
+                file: "015.人生匆匆像一阵风-安儿陈(十五倍音质).mp3", 
+                size: 5450079 
+            } 
+        , 
+            { 
+                name: "016.凄美地-郭顶(十五倍音质)", 
+                file: "016.凄美地-郭顶(十五倍音质).mp3", 
+                size: 6033956 
+            } 
+        , 
+            { 
+                name: "017.天际-洋澜一", 
+                file: "017.天际-洋澜一.mp3", 
+                size: 8138716 
+            } 
+        , 
+            { 
+                name: "018.把你的一生借给我一天-静静(十五倍音质)", 
+                file: "018.把你的一生借给我一天-静静(十五倍音质).mp3", 
+                size: 7364965 
+            } 
+        , 
+            { 
+                name: "019.别错过-程佳佳(十五倍音质)", 
+                file: "019.别错过-程佳佳(十五倍音质).mp3", 
+                size: 3985206 
+            } 
+        , 
+            { 
+                name: "020.别说我的眼泪你无所谓(女版)-葛漂亮(十五倍音质)", 
+                file: "020.别说我的眼泪你无所谓(女版)-葛漂亮(十五倍音质).mp3", 
+                size: 5419331 
+            } 
+        , 
+            { 
+                name: "021.别以为我爱你就不珍惜-张大美(十五倍音质)", 
+                file: "021.别以为我爱你就不珍惜-张大美(十五倍音质).mp3", 
+                size: 5837156 
+            } 
+        , 
+            { 
+                name: "022.不悲不喜不离不弃-黄静美(十五倍音质)", 
+                file: "022.不悲不喜不离不弃-黄静美(十五倍音质).mp3", 
+                size: 5369413 
+            } 
+        , 
+            { 
+                name: "023.不枉世上做撇捺-朱星澎(十五倍音质)", 
+                file: "023.不枉世上做撇捺-朱星澎(十五倍音质).mp3", 
+                size: 4729207 
+            } 
+        , 
+            { 
+                name: "024.不问ciaga(不问别离)-指尖笑(十五倍音质)", 
+                file: "024.不问ciaga(不问别离)-指尖笑(十五倍音质).mp3", 
+                size: 4225510 
+            } 
+        , 
+            { 
+                name: "025.不止一个我-魏佳艺(十五倍音质)", 
+                file: "025.不止一个我-魏佳艺(十五倍音质).mp3", 
+                size: 4933513 
+            } 
+        , 
+            { 
+                name: "026.步步清风再无你-黄静美(十五倍音质)", 
+                file: "026.步步清风再无你-黄静美(十五倍音质).mp3", 
+                size: 3996598 
+            } 
+        , 
+            { 
+                name: "027.曾经心痛-半吨兄弟(十五倍音质)", 
+                file: "027.曾经心痛-半吨兄弟(十五倍音质).mp3", 
+                size: 6319405 
+            } 
+        , 
+            { 
+                name: "028.痴人说梦-杨小壮(十五倍音质)", 
+                file: "028.痴人说梦-杨小壮(十五倍音质).mp3", 
+                size: 6209814 
+            } 
+        , 
+            { 
+                name: "029.窗-虎二(十五倍音质)", 
+                file: "029.窗-虎二(十五倍音质).mp3", 
+                size: 4413285 
+            } 
+        , 
+            { 
+                name: "030.在他乡(女生版)-汪六六(十五倍音质)", 
+                file: "030.在他乡(女生版)-汪六六(十五倍音质).mp3", 
+                size: 4511397 
+            } 
+        , 
+            { 
+                name: "031.赐我-一只白羊(十五倍音质)", 
+                file: "031.赐我-一只白羊(十五倍音质).mp3", 
+                size: 3566592 
+            } 
+        , 
+            { 
+                name: "032.错的是你 伤的是我-崔伟立（十五倍音质）", 
+                file: "032.错的是你 伤的是我-崔伟立（十五倍音质）.mp3", 
+                size: 6896584 
+            } 
+        , 
+            { 
+                name: "033.大不了-花姐(十五倍音质)", 
+                file: "033.大不了-花姐(十五倍音质).mp3", 
+                size: 6367656 
+            } 
+        , 
+            { 
+                name: "034.大哥-高炎&张晨光(十五倍音质)", 
+                file: "034.大哥-高炎&张晨光(十五倍音质).mp3", 
+                size: 6637487 
+            } 
+        , 
+            { 
+                name: "035.大雪还在下 - 苏谭谭(十五倍音质)", 
+                file: "035.大雪还在下 - 苏谭谭(十五倍音质).mp3", 
+                size: 4440096 
+            } 
+        , 
+            { 
+                name: "036.等不到的你-一只白羊(十五倍音质)", 
+                file: "036.等不到的你-一只白羊(十五倍音质).mp3", 
+                size: 3622060 
+            } 
+        , 
+            { 
+                name: "037.等我把我养的人养大-吕口口(十五倍音质)", 
+                file: "037.等我把我养的人养大-吕口口(十五倍音质).mp3", 
+                size: 4679789 
+            } 
+        , 
+            { 
+                name: "038.等一场大雨-苏星婕(十五倍音质)", 
+                file: "038.等一场大雨-苏星婕(十五倍音质).mp3", 
+                size: 3556004 
+            } 
+        , 
+            { 
+                name: "039.雨过天不晴-柯柯柯啊(十五倍音质)", 
+                file: "039.雨过天不晴-柯柯柯啊(十五倍音质).mp3", 
+                size: 4920721 
+            } 
+        , 
+            { 
+                name: "040.动了情的人-黄静美(十五倍音质)", 
+                file: "040.动了情的人-黄静美(十五倍音质).mp3", 
+                size: 5229333 
+            } 
+        , 
+            { 
+                name: "041.都会哭-关剑(十五倍音质)", 
+                file: "041.都会哭-关剑(十五倍音质).mp3", 
+                size: 6263571 
+            } 
+        , 
+            { 
+                name: "042.断舍离-南北组合 吉萍(十五倍音质)", 
+                file: "042.断舍离-南北组合 吉萍(十五倍音质).mp3", 
+                size: 7116227 
+            } 
+        , 
+            { 
+                name: "043.对你说-半吨兄弟(十五倍音质)", 
+                file: "043.对你说-半吨兄弟(十五倍音质).mp3", 
+                size: 5870861 
+            } 
+        , 
+            { 
+                name: "044.多年以后 - 大欢(十五倍音质)", 
+                file: "044.多年以后 - 大欢(十五倍音质).mp3", 
+                size: 5799484 
+            } 
+        , 
+            { 
+                name: "045.飞鸟和蝉-任然(十五倍音质)", 
+                file: "045.飞鸟和蝉-任然(十五倍音质).mp3", 
+                size: 6999248 
+            } 
+        , 
+            { 
+                name: "046.分手在那个秋天-莫叫姐姐(十五倍音质)", 
+                file: "046.分手在那个秋天-莫叫姐姐(十五倍音质).mp3", 
+                size: 3245169 
+            } 
+        , 
+            { 
+                name: "047.风吹散的遗憾-彤大王(十五倍音质)", 
+                file: "047.风吹散的遗憾-彤大王(十五倍音质).mp3", 
+                size: 5065060 
+            } 
+        , 
+            { 
+                name: "048.风中有朵雨做的云 (粤语莫叫语版)-莫叫姐姐(十五倍音质)", 
+                file: "048.风中有朵雨做的云 (粤语莫叫语版)-莫叫姐姐(十五倍音质).mp3", 
+                size: 5480210 
+            } 
+        , 
+            { 
+                name: "049.缝缝补补-侯泽润(十五倍音质)", 
+                file: "049.缝缝补补-侯泽润(十五倍音质).mp3", 
+                size: 5429597 
+            } 
+        , 
+            { 
+                name: "050.哥已不再是当年的哥-秋裤大叔(十五倍音质)", 
+                file: "050.哥已不再是当年的哥-秋裤大叔(十五倍音质).mp3", 
+                size: 7100387 
+            } 
+        , 
+            { 
+                name: "051.孤独的马帮-王琪(十五倍音质)", 
+                file: "051.孤独的马帮-王琪(十五倍音质).mp3", 
+                size: 7750404 
+            } 
+        , 
+            { 
+                name: "052.孤独在左寂寞在右-付豪(十五倍音质)", 
+                file: "052.孤独在左寂寞在右-付豪(十五倍音质).mp3", 
+                size: 4644622 
+            } 
+        , 
+            { 
+                name: "053.孤身的人-海来阿木(十五倍音质)", 
+                file: "053.孤身的人-海来阿木(十五倍音质).mp3", 
+                size: 6614561 
+            } 
+        , 
+            { 
+                name: "054.孤勇者-陈奕迅(十五倍音质)", 
+                file: "054.孤勇者-陈奕迅(十五倍音质).mp3", 
+                size: 6172070 
+            } 
+        , 
+            { 
+                name: "055.姑娘啊姑娘-杨小壮(十五倍音质)", 
+                file: "055.姑娘啊姑娘-杨小壮(十五倍音质).mp3", 
+                size: 7500779 
+            } 
+        , 
+            { 
+                name: "056.归途有风-海来阿木(十五倍音质)", 
+                file: "056.归途有风-海来阿木(十五倍音质).mp3", 
+                size: 4632241 
+            } 
+        , 
+            { 
+                name: "057.后来的你在哪(女声版)-范茹(十五倍音质)", 
+                file: "057.后来的你在哪(女声版)-范茹(十五倍音质).mp3", 
+                size: 4519203 
+            } 
+        , 
+            { 
+                name: "058.化风行万里-大欢（十五倍音质）", 
+                file: "058.化风行万里-大欢（十五倍音质）.mp3", 
+                size: 6279399 
+            } 
+        , 
+            { 
+                name: "059.患上名为思念的病-苏谭谭(十五倍音质)", 
+                file: "059.患上名为思念的病-苏谭谭(十五倍音质).mp3", 
+                size: 4719082 
+            } 
+        , 
+            { 
+                name: "060.寂寞沙洲冷-苏星婕(十五倍音质)", 
+                file: "060.寂寞沙洲冷-苏星婕(十五倍音质).mp3", 
+                size: 4207852 
+            } 
+        , 
+            { 
+                name: "061.九块九-高跷妹（十五倍音质）", 
+                file: "061.九块九-高跷妹（十五倍音质）.mp3", 
+                size: 4456022 
+            } 
+        , 
+            { 
+                name: "062.九十九步退一步-付豪(十五倍音质)", 
+                file: "062.九十九步退一步-付豪(十五倍音质).mp3", 
+                size: 5568180 
+            } 
+        , 
+            { 
+                name: "063.酒醉的人-花姐(十五倍音质)", 
+                file: "063.酒醉的人-花姐(十五倍音质).mp3", 
+                size: 6007627 
+            } 
+        , 
+            { 
+                name: "064.就让这大雨全都落下-容祖儿(十五倍音质)", 
+                file: "064.就让这大雨全都落下-容祖儿(十五倍音质).mp3", 
+                size: 6141307 
+            } 
+        , 
+            { 
+                name: "065.聚散如常-杨小壮(十五倍音质)", 
+                file: "065.聚散如常-杨小壮(十五倍音质).mp3", 
+                size: 5599733 
+            } 
+        , 
+            { 
+                name: "066.开往早晨的午夜-张碧晨(十五倍音质)", 
+                file: "066.开往早晨的午夜-张碧晨(十五倍音质).mp3", 
+                size: 7301469 
+            } 
+        , 
+            { 
+                name: "067.可可托海的牧羊人-王琪(十五倍音质)", 
+                file: "067.可可托海的牧羊人-王琪(十五倍音质).mp3", 
+                size: 8469034 
+            } 
+        , 
+            { 
+                name: "068.可能-程响(十五倍音质)", 
+                file: "068.可能-程响(十五倍音质).mp3", 
+                size: 4840029 
+            } 
+        , 
+            { 
+                name: "069.哭泣站台-王小帅(十五倍音质)", 
+                file: "069.哭泣站台-王小帅(十五倍音质).mp3", 
+                size: 5315881 
+            } 
+        , 
+            { 
+                name: "070.快乐是一种假笑-洋澜一(十五倍音质)", 
+                file: "070.快乐是一种假笑-洋澜一(十五倍音质).mp3", 
+                size: 6115646 
+            } 
+        , 
+            { 
+                name: "071.这个年代-大欢(十五倍音质)", 
+                file: "071.这个年代-大欢(十五倍音质).mp3", 
+                size: 7627618 
+            } 
+        , 
+            { 
+                name: "072.阿珍爱上了阿强-五条人(十五倍音质)", 
+                file: "072.阿珍爱上了阿强-五条人(十五倍音质).mp3", 
+                size: 10137035 
+            } 
+        , 
+            { 
+                name: "073.两个世界-杨小壮(十五倍音质)", 
+                file: "073.两个世界-杨小壮(十五倍音质).mp3", 
+                size: 6284706 
+            } 
+        , 
+            { 
+                name: "074.做只孤独鬼-AZ珍珍(十五倍音质)", 
+                file: "074.做只孤独鬼-AZ珍珍(十五倍音质).mp3", 
+                size: 5242708 
+            } 
+        , 
+            { 
+                name: "075.醉千年(烟嗓版)-半吨兄弟(十五倍音质)", 
+                file: "075.醉千年(烟嗓版)-半吨兄弟(十五倍音质).mp3", 
+                size: 4670826 
+            } 
+        , 
+            { 
+                name: "076.早安隆回-袁树雄(十五倍音质)", 
+                file: "076.早安隆回-袁树雄(十五倍音质).mp3", 
+                size: 6478122 
+            } 
+        , 
+            { 
+                name: "077.男人的累自己体会-杜天宇(十五倍音质)", 
+                file: "077.男人的累自己体会-杜天宇(十五倍音质).mp3", 
+                size: 6559653 
+            } 
+        , 
+            { 
+                name: "078.你就是我心里叫做遗憾的人-付豪(十五倍音质)", 
+                file: "078.你就是我心里叫做遗憾的人-付豪(十五倍音质).mp3", 
+                size: 4718509 
+            } 
+        , 
+            { 
+                name: "079.爱似水仙-张茜&半吨兄弟(十五倍音质)", 
+                file: "079.爱似水仙-张茜&半吨兄弟(十五倍音质).mp3", 
+                size: 5670523 
+            } 
+        , 
+            { 
+                name: "080.骗子和傻子-杨小壮(十五倍音质)", 
+                file: "080.骗子和傻子-杨小壮(十五倍音质).mp3", 
+                size: 4901454 
+            } 
+        , 
+            { 
+                name: "081.骗子-文夫（十五倍音质）", 
+                file: "081.骗子-文夫（十五倍音质）.mp3", 
+                size: 5602173 
+            } 
+        , 
+            { 
+                name: "082.漂泊的人(南瓜版)-南瓜(十五倍音质)", 
+                file: "082.漂泊的人(南瓜版)-南瓜(十五倍音质).mp3", 
+                size: 5129885 
+            } 
+        , 
+            { 
+                name: "083.萍聚-半吨兄弟(十五倍音质)", 
+                file: "083.萍聚-半吨兄弟(十五倍音质).mp3", 
+                size: 4912079 
+            } 
+        , 
+            { 
+                name: "084.爱是无畏的冒险-程今(十五倍音质)", 
+                file: "084.爱是无畏的冒险-程今(十五倍音质).mp3", 
+                size: 4499494 
+            } 
+        , 
+            { 
+                name: "085.青山有路-海来阿木(十五倍音质)", 
+                file: "085.青山有路-海来阿木(十五倍音质).mp3", 
+                size: 6814210 
+            } 
+        , 
+            { 
+                name: "086.情难断-苏谭谭(十五倍音质)", 
+                file: "086.情难断-苏谭谭(十五倍音质).mp3", 
+                size: 6112790 
+            } 
+        , 
+            { 
+                name: "087.情意结-邓岳章(十五倍音质)", 
+                file: "087.情意结-邓岳章(十五倍音质).mp3", 
+                size: 5427463 
+            } 
+        , 
+            { 
+                name: "088.让我们做个了断吧-李冰(十五倍音质)", 
+                file: "088.让我们做个了断吧-李冰(十五倍音质).mp3", 
+                size: 7120039 
+            } 
+        , 
+            { 
+                name: "089.人海尘埃-王韵(十五倍音质)", 
+                file: "089.人海尘埃-王韵(十五倍音质).mp3", 
+                size: 6570880 
+            } 
+        , 
+            { 
+                name: "090.人间这一遭-木杰(十五倍音质)", 
+                file: "090.人间这一遭-木杰(十五倍音质).mp3", 
+                size: 4328814 
+            } 
+        , 
+            { 
+                name: "091.人间总有一两风-李蕊儿（十五倍音质）", 
+                file: "091.人间总有一两风-李蕊儿（十五倍音质）.mp3", 
+                size: 3814484 
+            } 
+        , 
+            { 
+                name: "092.爱是人间最美丽的花-海来阿木(十五倍音质)", 
+                file: "092.爱是人间最美丽的花-海来阿木(十五倍音质).mp3", 
+                size: 6331930 
+            } 
+        , 
+            { 
+                name: "093.人生是一场难熬的修炼-侯泽润(十五倍音质)", 
+                file: "093.人生是一场难熬的修炼-侯泽润(十五倍音质).mp3", 
+                size: 4596578 
+            } 
+        , 
+            { 
+                name: "094.人生为啥这么苦-郭力(十五倍音质)", 
+                file: "094.人生为啥这么苦-郭力(十五倍音质).mp3", 
+                size: 7407181 
+            } 
+        , 
+            { 
+                name: "095.人生在世也就几十年-河东男人味（波哥）(十五倍音质)", 
+                file: "095.人生在世也就几十年-河东男人味（波哥）(十五倍音质).mp3", 
+                size: 4703264 
+            } 
+        , 
+            { 
+                name: "096.如果爱还在-雨中百合(十五倍音质)", 
+                file: "096.如果爱还在-雨中百合(十五倍音质).mp3", 
+                size: 7370453 
+            } 
+        , 
+            { 
+                name: "097.若把你(Live)-Kirsty刘瑾睿(十五倍音质)", 
+                file: "097.若把你(Live)-Kirsty刘瑾睿(十五倍音质).mp3", 
+                size: 4016557 
+            } 
+        , 
+            { 
+                name: "098.三生三幸-海来阿木(十五倍音质)", 
+                file: "098.三生三幸-海来阿木(十五倍音质).mp3", 
+                size: 6211200 
+            } 
+        , 
+            { 
+                name: "099.山茶花读不懂白玫瑰-Lil笑笑(十五倍音质)", 
+                file: "099.山茶花读不懂白玫瑰-Lil笑笑(十五倍音质).mp3", 
+                size: 4522441 
+            } 
+        , 
+            { 
+                name: "100.生活就是这样-宋健(十五倍音质)", 
+                file: "100.生活就是这样-宋健(十五倍音质).mp3", 
+                size: 6195834 
+            } 
+        , 
+            { 
+                name: "101.生日礼物(烟嗓版)-弹棉花的小花(十五倍音质)", 
+                file: "101.生日礼物(烟嗓版)-弹棉花的小花(十五倍音质).mp3", 
+                size: 5359612 
+            } 
+        , 
+            { 
+                name: "102.是你-梦然（十五倍音质）", 
+                file: "102.是你-梦然（十五倍音质）.mp3", 
+                size: 5250326 
+            } 
+        , 
+            { 
+                name: "103.谁的生活不是鸡零狗碎-李认针(十五倍音质)", 
+                file: "103.谁的生活不是鸡零狗碎-李认针(十五倍音质).mp3", 
+                size: 6410117 
+            } 
+        , 
+            { 
+                name: "104.爱怎么了-陈村长(十五倍音质)", 
+                file: "104.爱怎么了-陈村长(十五倍音质).mp3", 
+                size: 5115710 
+            } 
+        , 
+            { 
+                name: "105.愿你-黄静美(十五倍音质)", 
+                file: "105.愿你-黄静美(十五倍音质).mp3", 
+                size: 4529137 
+            } 
+        , 
+            { 
+                name: "106.听悲伤的情歌-苏星婕(十五倍音质)", 
+                file: "106.听悲伤的情歌-苏星婕(十五倍音质).mp3", 
+                size: 4411019 
+            } 
+        , 
+            { 
+                name: "107.听惯了风说-向思思(十五倍音质)", 
+                file: "107.听惯了风说-向思思(十五倍音质).mp3", 
+                size: 5158603 
+            } 
+        , 
+            { 
+                name: "108.听闻远方有你-刘艺雯(十五倍音质)", 
+                file: "108.听闻远方有你-刘艺雯(十五倍音质).mp3", 
+                size: 6144750 
+            } 
+        , 
+            { 
+                name: "109.晚风心里吹-阿梨粤(十五倍音质)", 
+                file: "109.晚风心里吹-阿梨粤(十五倍音质).mp3", 
+                size: 4247178 
+            } 
+        , 
+            { 
+                name: "110.微笑吧-杨小壮(十五倍音质)", 
+                file: "110.微笑吧-杨小壮(十五倍音质).mp3", 
+                size: 5189584 
+            } 
+        , 
+            { 
+                name: "111.为什么要努力-海伦(十五倍音质)", 
+                file: "111.为什么要努力-海伦(十五倍音质).mp3", 
+                size: 5824633 
+            } 
+        , 
+            { 
+                name: "112.唯我世无双-洛少爷(十五倍音质)", 
+                file: "112.唯我世无双-洛少爷(十五倍音质).mp3", 
+                size: 5626573 
+            } 
+        , 
+            { 
+                name: "113.问佛-彤大王（十五倍音质）", 
+                file: "113.问佛-彤大王（十五倍音质）.mp3", 
+                size: 5144167 
+            } 
+        , 
+            { 
+                name: "114.问君-杨小壮(十五倍音质)", 
+                file: "114.问君-杨小壮(十五倍音质).mp3", 
+                size: 4171514 
+            } 
+        , 
+            { 
+                name: "115.我爱你不问归期-白小白(十五倍音质)", 
+                file: "115.我爱你不问归期-白小白(十五倍音质).mp3", 
+                size: 6617907 
+            } 
+        , 
+            { 
+                name: "116.我曾遇到一束光-叶斯淳(十五倍音质)", 
+                file: "116.我曾遇到一束光-叶斯淳(十五倍音质).mp3", 
+                size: 5629693 
+            } 
+        , 
+            { 
+                name: "117.我得了一种叫做忘不掉你的病-韩小欠[男](十五倍音质)", 
+                file: "117.我得了一种叫做忘不掉你的病-韩小欠[男](十五倍音质).mp3", 
+                size: 6843355 
+            } 
+        , 
+            { 
+                name: "118.我的眼泪你的战利品-于冬然(十五倍音质)", 
+                file: "118.我的眼泪你的战利品-于冬然(十五倍音质).mp3", 
+                size: 4375658 
+            } 
+        , 
+            { 
+                name: "119.我记得-赵雷(十五倍音质)", 
+                file: "119.我记得-赵雷(十五倍音质).mp3", 
+                size: 7890229 
+            } 
+        , 
+            { 
+                name: "120.我借人间二两墨-黄静美&张俊波(十五倍音质)", 
+                file: "120.我借人间二两墨-黄静美&张俊波(十五倍音质).mp3", 
+                size: 3854618 
+            } 
+        ];
+
+        // DOM元素
+        const audioPlayer = document.getElementById('audioPlayer');
+        const playBtn = document.getElementById('playBtn');
+        const prevBtn = document.getElementById('prevBtn');
+        const nextBtn = document.getElementById('nextBtn');
+        const progressBar = document.getElementById('progressBar');
+        const progressContainer = document.getElementById('progressContainer');
+        const currentTimeEl = document.getElementById('currentTime');
+        const durationEl = document.getElementById('duration');
+        const volumeSlider = document.getElementById('volumeSlider');
+        const nowPlayingEl = document.getElementById('nowPlaying');
+        const songListContainer = document.getElementById('songListContainer');
+
+        // 当前播放索引
+        let currentSongIndex = 0;
+        // 播放状态
+        let isPlaying = false;
+
+        // 初始化歌曲列表
+        function initSongList() {
+            songListContainer.innerHTML = '';
+            
+            mp3Files.forEach((song, index) => {
+                const songItem = document.createElement('div');
+                songItem.className = `song-item ${index === currentSongIndex ? 'active' : ''}`;
+                songItem.dataset.index = index;
+                
+                // 格式化文件大小
+                const fileSize = formatFileSize(song.size);
+                
+                songItem.innerHTML = `
+                    <div class="song-number">${index + 1}</div>
+                    <div class="song-name">${song.name}</div>
+                    <div class="song-size">${fileSize}</div>
+                `;
+                
+                // 点击歌曲播放
+                songItem.addEventListener('click', () => {
+                    currentSongIndex = index;
+                    loadSong();
+                    playSong();
+                });
+                
+                songListContainer.appendChild(songItem);
+            });
+        }
+
+        // 格式化文件大小 (字节转MB/KB)
+        function formatFileSize(bytes) {
+            if (bytes === 0) return '0 Bytes';
+            
+            const k = 1024;
+            const sizes = ['Bytes', 'KB', 'MB', 'GB'];
+            const i = Math.floor(Math.log(bytes) / Math.log(k));
+            
+            return parseFloat((bytes / Math.pow(k, i)).toFixed(2)) + ' ' + sizes[i];
+        }
+
+        // 加载歌曲
+        function loadSong() {
+            // 更新激活状态
+            document.querySelectorAll('.song-item').forEach((item, index) => {
+                item.classList.toggle('active', index === currentSongIndex);
+            });
+            
+            // 设置音频源
+            const currentSong = mp3Files[currentSongIndex];
+            audioPlayer.src = currentSong.file;
+            nowPlayingEl.textContent = `正在播放: ${currentSong.name}`;
+            
+            // 加载完成后更新时长
+            audioPlayer.addEventListener('loadedmetadata', updateDuration, { once: true });
+        }
+
+        // 播放歌曲
+        function playSong() {
+            isPlaying = true;
+            playBtn.innerHTML = '❚❚';
+            audioPlayer.play();
+        }
+
+        // 暂停歌曲
+        function pauseSong() {
+            isPlaying = false;
+            playBtn.innerHTML = '▶';
+            audioPlayer.pause();
+        }
+
+        // 上一曲
+        function prevSong() {
+            currentSongIndex = (currentSongIndex - 1 + mp3Files.length) % mp3Files.length;
+            loadSong();
+            if (isPlaying) playSong();
+        }
+
+        // 下一曲
+        function nextSong() {
+            currentSongIndex = (currentSongIndex + 1) % mp3Files.length;
+            loadSong();
+            if (isPlaying) playSong();
+        }
+
+        // 更新进度条
+        function updateProgress() {
+            const { duration, currentTime } = audioPlayer;
+            const progressPercent = (currentTime / duration) * 100;
+            progressBar.style.width = `${progressPercent}%`;
+            
+            // 更新时间显示
+            currentTimeEl.textContent = formatTime(currentTime);
+        }
+
+        // 设置进度条
+        function setProgress(e) {
+            const width = progressContainer.clientWidth;
+            const clickX = e.offsetX;
+            const duration = audioPlayer.duration;
+            
+            audioPlayer.currentTime = (clickX / width) * duration;
+        }
+
+        // 格式化时间 (秒转分:秒)
+        function formatTime(seconds) {
+            if (isNaN(seconds)) return '00:00';
+            
+            const mins = Math.floor(seconds / 60);
+            const secs = Math.floor(seconds % 60);
+            
+            return `${mins.toString().padStart(2, '0')}:${secs.toString().padStart(2, '0')}`;
+        }
+
+        // 更新歌曲总时长
+        function updateDuration() {
+            durationEl.textContent = formatTime(audioPlayer.duration);
+        }
+
+        // 设置音量
+        function setVolume() {
+            audioPlayer.volume = volumeSlider.value;
+        }
+
+        // 事件监听
+        playBtn.addEventListener('click', () => (isPlaying ? pauseSong() : playSong()));
+        prevBtn.addEventListener('click', prevSong);
+        nextBtn.addEventListener('click', nextSong);
+        audioPlayer.addEventListener('timeupdate', updateProgress);
+        progressContainer.addEventListener('click', setProgress);
+        audioPlayer.addEventListener('ended', nextSong);
+        volumeSlider.addEventListener('input', setVolume);
+
+        // 初始化
+        initSongList();
+        loadSong();
+    </script>
+</body>
+</html>
