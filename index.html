@@ -2,8 +2,8 @@
 <html lang="zh-CN">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>多功能音乐播放器</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>多功能音乐播放器 v1.2.0</title>
     <style>
         * {
             margin: 0;
@@ -17,6 +17,7 @@
             color: #e0e0e0;
             min-height: 100vh;
             padding: 20px;
+            overflow-x: hidden; /* 防止水平滚动 */
         }
 
         .container {
@@ -30,6 +31,20 @@
         header {
             text-align: center;
             padding: 20px 0;
+            position: relative;
+        }
+
+        .version-badge {
+            position: absolute;
+            top: 10px;
+            right: 0;
+            background: linear-gradient(135deg, #ff6b6b, #ffa500);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-size: 0.8rem;
+            font-weight: bold;
+            box-shadow: 0 2px 8px rgba(0, 0, 0, 0.3);
         }
 
         h1 {
@@ -40,11 +55,18 @@
             background-clip: text;
             color: transparent;
             text-shadow: 0 2px 5px rgba(0, 0, 0, 0.2);
+            word-break: break-word; /* 防止长单词溢出 */
         }
 
         .subtitle {
             font-size: 1.1rem;
             opacity: 0.8;
+            margin-bottom: 5px;
+        }
+
+        .version-info {
+            font-size: 0.9rem;
+            color: #8a9ba8;
         }
 
         .main-content {
@@ -63,6 +85,7 @@
             box-shadow: 0 10px 30px rgba(0, 0, 0, 0.4);
             backdrop-filter: blur(10px);
             border: 1px solid rgba(255, 255, 255, 0.1);
+            max-width: 100%; /* 防止溢出 */
         }
 
         .playlist-section h2 {
@@ -73,6 +96,7 @@
             display: flex;
             justify-content: space-between;
             align-items: center;
+            flex-wrap: wrap;
         }
 
         .song-count {
@@ -82,6 +106,7 @@
             padding: 4px 12px;
             border-radius: 20px;
             font-weight: bold;
+            margin-top: 5px;
         }
 
         .search-box {
@@ -105,6 +130,7 @@
             max-height: 65vh;
             overflow-y: auto;
             padding-right: 10px;
+            -webkit-overflow-scrolling: touch; /* 移动端平滑滚动 */
         }
 
         .song-list {
@@ -121,6 +147,7 @@
             cursor: pointer;
             transition: all 0.3s ease;
             border-left: 4px solid transparent;
+            overflow: hidden; /* 防止内容溢出 */
         }
 
         .song-item:hover {
@@ -135,6 +162,7 @@
 
         .song-number {
             width: 30px;
+            min-width: 30px; /* 固定宽度 */
             font-weight: bold;
             color: #8fbbd9;
             text-align: center;
@@ -142,7 +170,8 @@
 
         .song-info {
             flex: 1;
-            min-width: 0;
+            min-width: 0; /* 允许内容收缩 */
+            overflow: hidden; /* 防止文本溢出 */
         }
 
         .song-title {
@@ -181,11 +210,13 @@
             border: 1px solid rgba(255, 255, 255, 0.1);
             display: flex;
             flex-direction: column;
+            max-width: 100%; /* 防止溢出 */
         }
 
         .current-song-info {
             text-align: center;
             margin-bottom: 30px;
+            overflow: hidden; /* 防止溢出 */
         }
 
         .current-song-title {
@@ -196,12 +227,17 @@
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+            max-width: 100%; /* 限制最大宽度 */
         }
 
         .current-song-artist {
             font-size: 1.2rem;
             color: #a0c4e0;
             margin-bottom: 15px;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 100%; /* 限制最大宽度 */
         }
 
         .song-progress {
@@ -217,6 +253,7 @@
             cursor: pointer;
             overflow: hidden;
             margin-bottom: 8px;
+            touch-action: none; /* 防止触摸滚动干扰 */
         }
 
         .progress-fill {
@@ -255,6 +292,7 @@
             align-items: center;
             justify-content: center;
             transition: all 0.3s;
+            -webkit-tap-highlight-color: transparent; /* 移除移动端点击高亮 */
         }
 
         .control-btn:hover {
@@ -284,6 +322,7 @@
         .volume-icon {
             font-size: 1.5rem;
             color: #a0c4e0;
+            min-width: 24px; /* 固定图标宽度 */
         }
 
         .volume-slider {
@@ -292,6 +331,7 @@
             background: rgba(255, 255, 255, 0.1);
             border-radius: 3px;
             cursor: pointer;
+            touch-action: none; /* 防止触摸滚动干扰 */
         }
 
         .volume-fill {
@@ -305,6 +345,7 @@
             width: 40px;
             text-align: center;
             font-size: 0.9rem;
+            min-width: 40px; /* 固定宽度 */
         }
 
         /* 底部状态栏 */
@@ -316,6 +357,7 @@
             text-align: center;
             font-size: 0.95rem;
             color: #a0c4e0;
+            overflow-wrap: break-word; /* 允许长单词换行 */
         }
 
         /* 滚动条样式 */
@@ -335,30 +377,123 @@
 
         /* 响应式调整 */
         @media (max-width: 768px) {
-            .main-content {
-                flex-direction: column;
+            body {
+                padding: 10px; /* 减小移动端内边距 */
             }
+            
+            .container {
+                gap: 15px;
+            }
+            
             h1 {
                 font-size: 2.2rem;
+                padding: 0 10px;
             }
+            
+            .version-badge {
+                position: relative;
+                top: 0;
+                display: inline-block;
+                margin-bottom: 10px;
+            }
+            
+            .playlist-section,
+            .player-section {
+                padding: 20px;
+                min-width: 100%; /* 确保在移动端占满宽度 */
+                width: 100%;
+            }
+            
+            .main-content {
+                flex-direction: column;
+                gap: 15px;
+            }
+            
             .control-btn {
                 width: 50px;
                 height: 50px;
                 font-size: 1.5rem;
             }
+            
             .control-btn.play-pause {
                 width: 60px;
                 height: 60px;
                 font-size: 1.8rem;
             }
+            
+            .current-song-title {
+                font-size: 1.6rem;
+            }
+            
+            .current-song-artist {
+                font-size: 1rem;
+            }
+            
+            .song-item {
+                padding: 12px;
+                margin-bottom: 8px;
+            }
+            
+            .song-size {
+                font-size: 0.75rem;
+                margin-left: 8px;
+            }
+        }
+        
+        /* 小屏幕手机优化 */
+        @media (max-width: 480px) {
+            h1 {
+                font-size: 1.8rem;
+            }
+            
+            .subtitle {
+                font-size: 1rem;
+            }
+            
+            .playlist-section h2 {
+                font-size: 1.4rem;
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            
+            .song-count {
+                align-self: flex-end;
+                margin-top: 10px;
+            }
+            
+            .controls {
+                gap: 15px;
+            }
+            
+            .control-btn {
+                width: 45px;
+                height: 45px;
+                font-size: 1.3rem;
+            }
+            
+            .control-btn.play-pause {
+                width: 55px;
+                height: 55px;
+                font-size: 1.5rem;
+            }
+        }
+        
+        /* 防止文本选择 */
+        .no-select {
+            -webkit-user-select: none;
+            -moz-user-select: none;
+            -ms-user-select: none;
+            user-select: none;
         }
     </style>
 </head>
 <body>
-    <div class="container">
+    <div class="container no-select">
         <header>
+            <div class="version-badge">v1.2.0</div>
             <h1>🎵 多功能音乐播放器</h1>
             <p class="subtitle">点击歌曲开始播放，支持搜索、进度控制和音量调节</p>
+            <p class="version-info">版本 1.2.0 | 最后更新: 2024年6月</p>
         </header>
 
         <div class="main-content">
@@ -415,7 +550,7 @@
     <audio id="audioPlayer"></audio>
 
     <script>
-        // 歌曲数据
+        // 歌曲数据 - 保持不变
         const mp3Files = [ 
             { name: "001.罗刹海市-刀郎(十五倍音质)", file: "001.罗刹海市-刀郎(十五倍音质).mp3", size: 8219263 }, 
             { name: "002.天真的橡皮-王小帅(十五倍音质)", file: "002.天真的橡皮-王小帅(十五倍音质).mp3", size: 6158718 }, 
@@ -781,6 +916,62 @@
             // 初始化音量
             audioPlayer.volume = 0.7;
             volumeFill.style.width = '70%';
+            
+            // 触摸事件支持 - 移动端优化
+            let isTouchingProgress = false;
+            let isTouchingVolume = false;
+            
+            progressBar.addEventListener('touchstart', (e) => {
+                isTouchingProgress = true;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const fakeEvent = { clientX: touch.clientX };
+                seekProgress(fakeEvent);
+            });
+            
+            progressBar.addEventListener('touchmove', (e) => {
+                if (isTouchingProgress) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const fakeEvent = { clientX: touch.clientX };
+                    seekProgress(fakeEvent);
+                }
+            });
+            
+            progressBar.addEventListener('touchend', () => {
+                isTouchingProgress = false;
+            });
+            
+            volumeSlider.addEventListener('touchstart', (e) => {
+                isTouchingVolume = true;
+                e.preventDefault();
+                const touch = e.touches[0];
+                const fakeEvent = { clientX: touch.clientX };
+                updateVolume(fakeEvent);
+            });
+            
+            volumeSlider.addEventListener('touchmove', (e) => {
+                if (isTouchingVolume) {
+                    e.preventDefault();
+                    const touch = e.touches[0];
+                    const fakeEvent = { clientX: touch.clientX };
+                    updateVolume(fakeEvent);
+                }
+            });
+            
+            volumeSlider.addEventListener('touchend', () => {
+                isTouchingVolume = false;
+            });
+            
+            // 防止双击缩放
+            let lastTouchEnd = 0;
+            document.addEventListener('touchend', (event) => {
+                const now = Date.now();
+                if (now - lastTouchEnd <= 300) {
+                    event.preventDefault();
+                }
+                lastTouchEnd = now;
+            }, false);
         }
 
         // 页面加载完成后初始化
@@ -797,6 +988,10 @@
                 currentSongTitle.textContent = firstSong.title;
                 currentSongArtist.textContent = firstSong.artist;
             }
+            
+            // 版本信息
+            console.log('多功能音乐播放器 v1.2.0 已加载');
+            console.log('歌曲总数:', mp3Files.length);
         });
     </script>
 </body>
